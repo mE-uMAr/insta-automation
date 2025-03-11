@@ -2,6 +2,8 @@
 
 This project automates the process of creating and logging into Instagram accounts using Playwright and temporary email services.
 
+#### Contributions are not welcomed!
+
 ## Project Structure
 
 - `create_account.py`: Automates the creation of Instagram accounts.
