@@ -14,9 +14,9 @@ from tempemail import generate_email, get_messages
 
 # User-Agent List for Fingerprint Spoofing
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7; rv:119.0) Gecko/20100101 Firefox/119.0",
-    "Mozilla/5.0 (Linux; Android 11; Mobile; rv:118.0) Gecko/20100101 Firefox/118.0"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 11; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36"
 ]
 
 # Human-like Mouse Movement
@@ -24,50 +24,99 @@ def move_mouse_randomly(page):
     for _ in range(random.randint(5, 10)):
         x = random.randint(100, 900)
         y = random.randint(100, 600)
-        page.mouse.move(x, y, random.uniform(0.1, 0.5))
+        page.mouse.move(x, y, steps=5) 
         time.sleep(random.uniform(0.2, 0.5))
 
 # Human-like Typing
 def fill_input_with_cursor(page, selector, text):
-    page.wait_for_selector(selector)
-    page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+    page.wait_for_selector(selector, state="visible")  # Ensure element is visible
+    x = random.randint(100, 500)
+    y = random.randint(100, 500)
+    
+    page.mouse.move(x, y,steps=5)
     page.click(selector)
+    time.sleep(random.uniform(0.5, 1.5))  # Small delay for realism
+
     for char in text:
-        page.keyboard.type(char, delay=random.uniform(50, 200))
+        page.keyboard.type(char, delay=random.uniform(50, 150))  # Typing delay
+
 
 # Automate Instagram Signup
 def create_instagram_account():
     with sync_playwright() as p:
         try:
             # Launch browser with proxy
-            browser = p.firefox.launch(
-                headless=False,
-                proxy={"server": "socks5://p.webshare.io:80",
-                       "username": "xyapizye-rotate",
-                       "password": "xxi1nxa8jdfc"}
-            )
-            context = browser.new_context(
-                user_agent=random.choice(USER_AGENTS),
-                viewport={"width": random.randint(1280, 1920), "height": random.randint(720, 1080)},
-                java_script_enabled=True,
-                bypass_csp=True
-            )
+            browser = p.chromium.launch(headless=False)
+            # ,proxy={"server": "socks5://127.0.0.1:9050"})
+
+            # browser = p.chromium.launch(
+            #     headless=False)
+            #     proxy={"server": "http://p.webshare.io:80",
+            #            "username": "xyapizye-rotate",
+            #            "password": "xxi1nxa8jdfc"}
+            # )
+            # context = browser.new_context(
+            #     user_agent=random.choice(USER_AGENTS),
+            #     viewport={"width": random.randint(1280, 1920), "height": random.randint(720, 1080)},
+            #     java_script_enabled=True,
+            #     bypass_csp=True
+            # )
+            context = browser.new_context()
             
             page = context.new_page()
-            stealth_sync(page)  # Apply stealth mode
+            # stealth_sync(page)  # Apply stealth mode
+
+            # load signup page
+            page.goto("https://www.instagram.com/accounts/emailsignup/", timeout=60000)
+            try:
+                page.wait_for_selector("button:has-text('Allow all cookies')", timeout=5000)
+                page.click("button:has-text('Allow all cookies')")
+            except:
+                pass
+            
+            if page.url == f"https://www.instagram.com/accounts/signup/phone/":
+                # page.goto("https://www.instagram.com/accounts/emailsignup/")
+                page.goto("https://www.instagram.com/accounts/signup/email/")
+
+                page.wait_for_selector("input[name='email']", timeout=60000)
+
+                # Close cookie popup if it exists
+                try:
+                    page.wait_for_selector("button:has-text('Allow all cookies')", timeout=5000)
+                    page.click("button:has-text('Allow all cookies')")
+                except:
+                    pass
+                fullname = generate_full_name()
+                username = gen_username()
+                password = gen_password()
+                email_address = generate_email(username)
+
+                # email_address = "victorjz4aua@edny.net"
+                # username = "victorjzaua"
+                # password = "victorjzasd123"
+                # fullname = "victor jz"
+
+                fill_input_with_cursor(page, "input[name='email']", email_address)
+                page.click('text=Next')
+
+            time.sleep(random.uniform(3, 6))
+            page.wait_for_selector("input[name='emailOrPhone']", timeout=60000)
 
             # Generate random details
             fullname = generate_full_name()
             username = gen_username()
             password = gen_password()
             email_address = generate_email(username)
+            # email_address = "victorjz4aua@edny.net"
+            # username = "victorjzaua"
+            # password = "victorjzasd123"
+            # fullname = "victor jz"
+
 
             if not email_address:
                 print("Failed to get email. Exiting...")
                 return
 
-            page.goto("https://www.instagram.com/accounts/emailsignup/", timeout=60000)
-            time.sleep(random.uniform(3, 6))
 
             # Fill Sign-up Form
             fill_input_with_cursor(page, "input[name='emailOrPhone']", email_address)
@@ -79,11 +128,16 @@ def create_instagram_account():
             move_mouse_randomly(page)
 
             # Click Sign Up
-            page.click("button[type='submit']")
-            time.sleep(5)
+            try:
+                page.wait_for_selector("text=Next", state="visible", timeout=5000)
+                page.click("text=Next")
+            except:
+                page.wait_for_selector("button[type='submit']", state="visible", timeout=5000)
+                page.click("button[type='submit']")
+
 
             # Select Birthdate
-            page.wait_for_selector("select[title='Month:']")
+            page.wait_for_selector("select[title='Month:']",timeout=60000)
             random_day = str(random.randint(1, 28))
             random_year = str(random.randint(1985, 2005))
             page.select_option("select[title='Day:']", random_day)

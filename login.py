@@ -3,6 +3,7 @@ import time
 from playwright.sync_api import sync_playwright
 from db import FetchAccounts, update_session_id
 import json
+from tempemail import get_messages
 
 def login_account():
     accounts = FetchAccounts().get_all_accounts()
@@ -15,22 +16,24 @@ def login_account():
             browser = p.chromium.launch(headless=False, slow_mo=100)
             context = browser.new_context()
             
-            if session_token:
-                print(f"Trying session login for: {email}")
-                cookie = json.loads(session_token)
-                context.add_cookies(cookie)
-                page = context.new_page()
-                page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
-                time.sleep(5)
-                if page.url == f"https://www.instagram.com/{username}/":
-                    print(f"Successfully logged in using session ID: {email}")
+            if session_token and session_token.strip():  # Ensure session_token is not None or empty
+                try:
+                    print(f"Trying session login for: {email}")
+                    cookie = json.loads(session_token)  # Safe to load now
+                    context.add_cookies(cookie)
+                    page = context.new_page()
+                    page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
+                    time.sleep(5)
                     
-                    time.sleep(60)
-                    browser.close()
-                    continue
-                else:
-                    print(f"Session login failed for {email}. Trying manual login...")
-            
+                    if page.url == f"https://www.instagram.com/{username}/":
+                        print(f"Successfully logged in using session ID: {email}")
+                        time.sleep(60)
+                        browser.close()
+                        continue
+                    else:
+                        print(f"Session login failed for {email}. Trying manual login...")
+                except json.JSONDecodeError:
+                    print(f"Invalid session_token for {email}. Trying manual login...")
             # Manual login
             try:
                 page = context.new_page()
@@ -41,6 +44,15 @@ def login_account():
                 time.sleep(random.uniform(2, 5))
                 page.click("button[type='submit']")
                 time.sleep(5)
+                try:
+                    page.wait_for_selector("input[name='email']", timeout=6000)
+                    code = get_messages(email)
+                    page.fill("input[name='email']", code)
+                    page.click("button[type='submit']")
+                except:
+                    pass
+                time.sleep(random.uniform(2,5))
+
                 
                 if "/accounts/onetap" in page.url or "instagram.com" in page.url:
                     print(f"Successfully logged in manually: {email}")
