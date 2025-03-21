@@ -4,7 +4,7 @@ import os
 import re
 
 EMAILS_FILE = "emails.json"
-API_BASE = "https://api.mail.tm"
+API_BASE = "https://api.tm"
 
 def save_email(email, password):
     data = {"email": email, "password": password}
@@ -71,7 +71,3 @@ def get_messages(email):
             print("No new messages.")
     else:
         print("Failed to retrieve messages.")
-
-
-# generate_email("asdfghjklmnbvcx")
-# get_messages("noah42ka@edny.net")
